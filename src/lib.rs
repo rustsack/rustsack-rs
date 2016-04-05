@@ -2,9 +2,10 @@ use std::any::Any;
 use std::hash::Hash;
 use std::collections::LinkedList;
 use std::rc::Weak;
+use std::hash::Hasher;
 
 fn main() {
-    println!("Hello, world!");
+   // let mysack = RustSack{c:1,s:2,p:3};
 }
 
 
@@ -41,34 +42,83 @@ fn main() {
 ///when something causes the previous version of the sack to become a new version
 ///while internal messages are *excruciatingly* strongly typed, message sent through wormholes are only duck typed
 #[derive(Clone)]
-pub struct TreeNode<P,S,C> where P : TreeNodeInsertable, S : Sized + PartialEq + Eq {
+pub struct TreeNode<P,S,C> where P : TreeNodeInsertable, S : Sized + PartialEq + Eq + Hash {
 	p:Weak<P>,
 	s:Box<S>,
 	c:LinkedList<C>
 }
 
+///Anything that can be the child of a treenode has to be Hash-able
+pub trait TreeNodeInsertable : Sized + PartialEq + Eq + Hash{} 
+
 ///We need to implement our own PartialEq because we have to ignore the weak parent ref
-impl<P,S,C> PartialEq for TreeNode<P,S,C> where P: TreeNodeInsertable, C : TreeNodeInsertable, S:PartialEq + Eq {
+impl<P,S,C> PartialEq for TreeNode<P,S,C> where P: TreeNodeInsertable, C : TreeNodeInsertable, S:PartialEq + Eq + Hash {
 	fn eq(&self, other:&TreeNode<P,S,C>) -> bool {
 		self.s == other.s && self.c == other.c
 	}	
 }
 
-pub enum TreeNodeItem<P,S,C> where P : TreeNodeInsertable, S: TreeNodeCarryable {
-	TN(TreeNode<P,Payload<S>,C>),
-	Leaf(String),
+///We need to implement our own Eq because we have to ignore the weak parent ref
+impl<P,S,C> Eq for TreeNode<P,S,C> where P: TreeNodeInsertable, C : TreeNodeInsertable, S:PartialEq + Eq + Hash {}
+
+///We need to implement our own Eq because we have to ignore the weak parent ref
+impl<P,S,C> Hash for TreeNode<P,S,C> where P: TreeNodeInsertable, C : TreeNodeInsertable, S:PartialEq + Eq + Hash {
+	fn hash<H>(&self, state:&mut H) -> () where H : Hasher{
+		self.p.upgrade().hash(state); //FIXME why does the second syntax not work on this line?
+		(&self.s).hash(state);
+	}
 }
 
+pub enum TreeNodeItem<P,S,C> where P : TreeNodeInsertable, S: TreeNodeCarryable {
+	TN(TreeNode<P,Value<S>,C>),
+	Leaf(String),
+}
 
 ///Marker trait for anything that ops in to being the payload of a TreeNode
 pub trait TreeNodeCarryable : PartialEq + Eq + Hash{}
 ///For now, only 
 impl TreeNodeCarryable for String{}
 
-#[derive(PartialEq, Eq)]
-pub struct Payload<V>(V);
-type NodeName = Payload<String>;
-type RustSack = TreeNode<(), Any, Sack<Any,Any>>;
-pub trait TreeNodeInsertable : Sized + PartialEq + Eq{}
+#[derive(PartialEq, Eq, Hash)]
+pub struct Value<V>(V);
+
+type NodeName = Value<String>;
+
+#[derive(PartialEq,Eq, Hash)]
+enum RustSackValue {
+	name(NodeName),
+}
+
+#[derive(PartialEq,Eq, Hash)]
+enum RustSackParent{
+	rs(RustSack),
+	nonr(())
+}
+
+impl TreeNodeInsertable for RustSackParent{}
+
+#[derive(PartialEq,Eq, Hash)]
+enum RustSackChild{
+	rs(RustSack),
+	poro(()) //PORO == Plain Old RustSack Object, and is any non-RustSack that can be put in a RustSack
+}
+
+impl TreeNodeInsertable for RustSackChild{}
+
 type Sack<P,S> = TreeNode<P,S, Any>;
+//pub trait RustSackInsertable : TreeNodeInsertable + Sized{}
+
+type RustSack = TreeNode<RustSackParent, Value<RustSackValue>, RustSackChild>;
+//impl TreeNodeInsertable for RustSack{}
+//impl TreeNodeInsertable for RustSackParent{}
+
+impl RustSack {
+//	fn new() -> Self {
+//		
+//	}
+}
+
+
+
 trait TreeNodeParent<C : TreeNodeInsertable> : TreeNodeInsertable{}
+
