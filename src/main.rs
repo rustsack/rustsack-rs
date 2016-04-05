@@ -1,6 +1,7 @@
 use std::any::Any;
 use std::hash::Hash;
 use std::collections::LinkedList;
+use std::rc::Weak;
 
 fn main() {
     println!("Hello, world!");
@@ -39,36 +40,33 @@ fn main() {
 ///wormoles, unlike all internal apis, are not versioned, and hence truly do change behavior 
 ///when something causes the previous version of the sack to become a new version
 ///while internal messages are *excruciatingly* strongly typed, message sent through wormholes are only duck typed
-#[derive(PartialEq, Eq, Hash, Clone)]
-pub struct TreeNode<P,S,TreeNodeInsertable>  {
-	p:P,
+#[derive(Clone)]
+pub struct TreeNode<P,S,C> where P : TreeNodeInsertable, S : Sized + PartialEq + Eq {
+	p:Weak<P>,
 	s:S,
-	c:LinkedList<TreeNodeInsertable>, 
+	c:LinkedList<C>
 }
 
-//trait TreeNodeInsertable : Hash{}
-type foo = TreeNode<(),String,TreeNode<Any,Any,Any>>;
-
-
-pub struct Node<K, V> {
-    keys: Vec<K>,
-    edges: Vec<Node<K, V>>,
-    vals: Vec<V>,
+impl<P,S,C> PartialEq for TreeNode<P,S,C> where P: TreeNodeInsertable, C : TreeNodeInsertable, S:PartialEq + Eq {
+	fn eq(&self, other:&TreeNode<P,S,C>) -> bool {
+		self.s == other.s && self.c == other.c
+	}	
 }
 
-//trait TreeNodeable : PartialEq + Eq + Hash + Clone{}
-
-///Treenodes are immutable, and sacks must be as well. never allow a mutable<C>hild
-type Sack<P,S> = TreeNode<P,S, Any>;
-
-//impl<P,S> TreeNode<P,S, TreeNodeInsertable>{
-//	fn add_child(self)
+//trait TreeNodeParent<C : TreeNodeInsertable<Any,Any,Any>> : TreeNodeInsertable<Any,Any,Any>{}
+pub trait TreeNodeInsertable : Sized + PartialEq + Eq{}
+//impl<P,S,C> TreeNodeInsertable<P,S,C> for TreeNode<P,S,C>{}
+//
+/////Treenodes are immutable, and sacks must be as well. never allow a mutable<C>hild
+//type Sack<P,S> = TreeNode<P,S, Any>;
+//
+//impl<P,S> TreeNode<P,S, TreeNodeInsertable<Any,Any,Any>>{
+//	fn add_child(self){}
 //}
-//}
-type NodeName = String;
-
-
-type RustSack = TreeNode<(), NodeName, Sack<Any,Any>>;
+//type NodeName = String;
+//
+//
+//type RustSack = TreeNode<(), NodeName, Sack<Any,Any>>;
 
 //type DomainScopedRustSack<D> = TreeNode<(), D
 
