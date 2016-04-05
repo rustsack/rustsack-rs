@@ -43,30 +43,32 @@ fn main() {
 #[derive(Clone)]
 pub struct TreeNode<P,S,C> where P : TreeNodeInsertable, S : Sized + PartialEq + Eq {
 	p:Weak<P>,
-	s:S,
+	s:Box<S>,
 	c:LinkedList<C>
 }
 
+///We need to implement our own PartialEq because we have to ignore the weak parent ref
 impl<P,S,C> PartialEq for TreeNode<P,S,C> where P: TreeNodeInsertable, C : TreeNodeInsertable, S:PartialEq + Eq {
 	fn eq(&self, other:&TreeNode<P,S,C>) -> bool {
 		self.s == other.s && self.c == other.c
 	}	
 }
 
-//trait TreeNodeParent<C : TreeNodeInsertable<Any,Any,Any>> : TreeNodeInsertable<Any,Any,Any>{}
+pub enum TreeNodeItem<P,S,C> where P : TreeNodeInsertable, S: TreeNodeCarryable {
+	TN(TreeNode<P,Payload<S>,C>),
+	Leaf(String),
+}
+
+
+///Marker trait for anything that ops in to being the payload of a TreeNode
+pub trait TreeNodeCarryable : PartialEq + Eq + Hash{}
+///For now, only 
+impl TreeNodeCarryable for String{}
+
+#[derive(PartialEq, Eq)]
+pub struct Payload<V>(V);
+type NodeName = Payload<String>;
+type RustSack = TreeNode<(), Any, Sack<Any,Any>>;
 pub trait TreeNodeInsertable : Sized + PartialEq + Eq{}
-//impl<P,S,C> TreeNodeInsertable<P,S,C> for TreeNode<P,S,C>{}
-//
-/////Treenodes are immutable, and sacks must be as well. never allow a mutable<C>hild
-//type Sack<P,S> = TreeNode<P,S, Any>;
-//
-//impl<P,S> TreeNode<P,S, TreeNodeInsertable<Any,Any,Any>>{
-//	fn add_child(self){}
-//}
-//type NodeName = String;
-//
-//
-//type RustSack = TreeNode<(), NodeName, Sack<Any,Any>>;
-
-//type DomainScopedRustSack<D> = TreeNode<(), D
-
+type Sack<P,S> = TreeNode<P,S, Any>;
+trait TreeNodeParent<C : TreeNodeInsertable> : TreeNodeInsertable{}
